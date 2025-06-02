@@ -1,0 +1,52 @@
+import kagglehub
+
+path = kagglehub.dataset_download("uciml/sms-spam-collection-dataset")
+
+print("Path to dataset files:", path)
+import os
+
+print("Files and folders inside the dataset directory:")# List all files in the downloaded dataset folder
+for item in os.listdir(path):
+    print(item)
+import pandas as pd
+file = os.path.join(path,"spam.csv") #fetched csv file from the path
+df = pd.read_csv(file, encoding='latin-1')
+df = df[['v1', 'v2']]
+df.columns = ['Label', 'Message']
+df.head()
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+
+X = df['Message']
+Y = df['Label']
+
+X_train, X_test, y_train, y_test = train_test_split(X, Y, test_size=0.2, random_state=42)#Spliting the data for 20 persent testing and 80 percent training
+from sklearn.feature_extraction.text import TfidfVectorizer
+vect = TfidfVectorizer(max_features=5000, stop_words='english')
+X_train_tfidf = vect.fit_transform(X_train)
+X_test_tfidf = vect.transform( X_test)
+
+from sklearn.linear_model import LogisticRegression
+
+clf = LogisticRegression()
+clf.fit(X_train_tfidf, y_train)
+y_pred = clf.predict(X_test_tfidf)
+print("Accuracy:", accuracy_score(y_test, y_pred))
+print("\n Classification Report:\n", classification_report(y_test, y_pred))
+
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+cm = confusion_matrix(y_test, y_pred)
+
+plt.figure(figsize=(5,4))
+sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=['Ham', 'Spam'], yticklabels=['Ham', 'Spam'])
+plt.xlabel('Predicted')
+plt.ylabel('True')
+plt.title('Confusion Matrix For Spam')
+plt.show()
+
+new_message=["Whats up? "]
+new_message_tfidf = vect.transform(new_message)
+prediction = clf.predict(new_message_tfidf)
+print("Prediction:", prediction)  
