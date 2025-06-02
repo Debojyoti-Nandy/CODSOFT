@@ -1,0 +1,75 @@
+import kagglehub
+
+# Download latest version
+path = kagglehub.dataset_download("kartik2112/fraud-detection")
+
+print("Path to dataset files:", path)
+import os
+
+print("Files and folders inside the dataset directory:")# List all files in the downloaded dataset folder
+for item in os.listdir(path):
+    print(item)
+import pandas as pd
+test_df=pd.read_csv(os.path.join(path+'/fraudTest.csv'))
+train_df=pd.read_csv(os.path.join(path+'/fraudTrain.csv'))
+
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import LabelEncoder
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import classification_report, confusion_matrix, accuracy_score, f1_score
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+#PREPROCESSING
+train_df['trans_date_trans_time'] = pd.to_datetime(train_df['trans_date_trans_time'])
+train_df['hour'] = train_df['trans_date_trans_time'].dt.hour
+train_df['day'] =train_df['trans_date_trans_time'].dt.day
+
+test_df['trans_date_trans_time'] = pd.to_datetime(test_df['trans_date_trans_time'])
+test_df['hour'] = test_df['trans_date_trans_time'].dt.hour
+test_df['day'] =test_df['trans_date_trans_time'].dt.day
+train_df['DOB'] = pd.to_datetime(train_df['dob'])
+train_df['age'] = (train_df['trans_date_trans_time'] - train_df['DOB']).dt.days // 365
+
+test_df['DOB'] = pd.to_datetime(test_df['dob'])
+test_df['age'] = (test_df['trans_date_trans_time'] - test_df['DOB']).dt.days // 365
+train_df.drop(columns=["trans_date_trans_time", "dob"], inplace=True)
+test_df.drop(columns=["trans_date_trans_time", "dob"], inplace=True)
+
+#categorical-Encoding
+cat_cols = ['merchant', 'category', 'gender', 'job','first','last','street','city','trans_num','state']
+for col in cat_cols:
+    train_df[col] = LabelEncoder().fit_transform(train_df[col])
+    test_df[col] = LabelEncoder().fit_transform(test_df[col])
+train_df.dropna(inplace=True)
+test_df.dropna(inplace=True)
+
+X_train =train_df.drop('is_fraud', axis=1)
+y_train = train_df['is_fraud']
+print(X_train.dtypes)
+
+datetime_cols_to_drop = X_train.select_dtypes(include=['datetime64']).columns
+if len(datetime_cols_to_drop) > 0:
+    X_train = X_train.drop(columns=datetime_cols_to_drop)
+    print(f"Dropped datetime columns: {list(datetime_cols_to_drop)}")
+dt_model = DecisionTreeClassifier(random_state=42)
+dt_model.fit(X_train, y_train)
+
+datetime_cols_to_drop1 = test_df.select_dtypes(include=['datetime64']).columns
+if len(datetime_cols_to_drop1) > 0:
+    test_df = test_df.drop(columns=datetime_cols_to_drop1)
+    print(f"Dropped datetime columns: {list(datetime_cols_to_drop1)}")
+print(test_df.dtypes)
+
+y_pred = dt_model.predict(test_df.drop('is_fraud', axis=1))
+y_true = test_df['is_fraud']
+print("Accuracy:", accuracy_score(y_true, y_pred))
+print("Classification Report:\n", classification_report(y_true, y_pred))
+
+sns.heatmap(confusion_matrix(y_true, y_pred), annot=True, fmt='d', cmap='Blues')
+plt.title('Confusion Matrix')
+plt.xlabel('Predicted')
+plt.ylabel('Actual')
+plt.show()
