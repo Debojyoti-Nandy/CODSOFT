@@ -1,0 +1,77 @@
+import kagglehub
+
+# Download latest version
+path = kagglehub.dataset_download("hijest/genre-classification-dataset-imdb")
+
+print("Path to dataset files:", path)
+
+import os
+
+print("Files and folders inside the dataset directory:")# List all files in the downloaded dataset folder
+for item in os.listdir(path):
+    print(item)
+dataset_folder = os.path.join(path, "Genre Classification Dataset")
+
+print("Files inside the 'Genre Classification Dataset' folder:")
+for filename in os.listdir(dataset_folder):
+    print(filename)
+
+dataset_folder = os.path.join(path, "Genre Classification Dataset")
+
+with open(os.path.join(dataset_folder, "description.txt"), 'r') as file:
+    description = file.read()
+
+print(description)
+
+with open(os.path.join(dataset_folder, "train_data.txt"), 'r') as file:
+    for _ in range(5):  # read first 5 lines
+        print(file.readline())
+import pandas as pd
+
+dataset_folder = os.path.join(path, "Genre Classification Dataset")
+train_file = os.path.join(dataset_folder, "train_data.txt")
+test_file = os.path.join(dataset_folder, "test_data.txt")
+
+
+solution_path = os.path.join(dataset_folder, "test_data_solution.txt")
+df_test = pd.read_csv(solution_path, sep=":::", engine='python', header=None, names=["ID", "TITLE", "GENRE","DESCRIPTION"])# Reading the file using ':::' as delimiter/Separator
+
+df_train = pd.read_csv(train_file, delimiter=':::', engine='python' , header=None , names=["ID", "TITLE", "GENRE","DESCRIPTION"])
+
+print(df_test.head())
+print(df_train.head())
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score, classification_report
+plt.figure(figsize=(10,5))
+sns.countplot(data=df_train, y='GENRE', order=df_train['GENRE'].value_counts().index)
+plt.title("Genre Distribution in Training Data")
+plt.xlabel("Count")
+plt.ylabel("Genre")
+plt.tight_layout()
+plt.show()
+#Text Vectorization (TF-IDF)
+T_vectorizer = TfidfVectorizer(max_features=5000, stop_words='english')
+X_train = T_vectorizer.fit_transform(df_train['DESCRIPTION'])
+X_test = T_vectorizer.transform(df_test['DESCRIPTION'])
+
+y_train = df_train['GENRE']
+y_test = df_test['GENRE']
+classify = LogisticRegression(max_iter=1000)
+classify.fit(X_train, y_train)
+
+y_pred = classify.predict(X_test)
+
+#Evaluation
+print("Classification Report:\n")
+print(classification_report(y_test, y_pred))
+
+new_description = ["A young archaeologist discovers an ancient relic that awakens a long-forgotten curse. As she races against time to break the spell, shadowy organizations and supernatural forces try to stop her. Her only allies are a skeptical historian and an ex-soldier with secrets of his own."]
+
+new_vector = T_vectorizer.transform(new_description)
+genre_predictor = classify.predict(new_vector)
+
+print("Predicted Genre:", genre_predictor[0])
+print(f"Model Accuracy : {accuracy_score(y_test, y_pred):.4f}")
